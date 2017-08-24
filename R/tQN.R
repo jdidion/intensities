@@ -78,22 +78,22 @@ prepare.reporters <- function(reps) {
 # Normalize reference sample intensities prior to creating a cluster file.
 #
 # reps: a data frame of reporters (loaded/prepared using prepare.reporters).
-# data.file: path of a tab-delimited data file that must have the following columns (including a header with 
-# these exact names): reporterId, X, Y and EITHER call OR Allele1.Forward and Allele2.Forward. The formats are: 
-# allele1 (A/B/H/N), allele2 (AA/BB/AB/NC), nucleotide1 (A/C/G/T/H/N), or nucleotide2 (AA/CC/GG/TT/AC/AG.../NC). 
-# By default, call is assumed to be in allele2 format and the allele columns are assumed to be nucleotides (so 
+# data.file: path of a tab-delimited data file that must have the following columns (including a header with
+# these exact names): reporterId, X, Y and EITHER call OR Allele1.Forward and Allele2.Forward. The formats are:
+# allele1 (A/B/H/N), allele2 (AA/BB/AB/NC), nucleotide1 (A/C/G/T/H/N), or nucleotide2 (AA/CC/GG/TT/AC/AG.../NC).
+# By default, call is assumed to be in allele2 format and the allele columns are assumed to be nucleotides (so
 # the default format would be nucleotide2).
 # QN.thresholds: thresholds for the X and Y values after quantile normalization.
 # save: whether to save the data frame to a tab-delimited text file
-# output.dir: ignored if save is FALSE. Otherwise, if NULL, the original files will be overwritten, otherwise 
-# the file will be written with the same name but to the specified directory. The new files contain the same data 
+# output.dir: ignored if save is FALSE. Otherwise, if NULL, the original files will be overwritten, otherwise
+# the file will be written with the same name but to the specified directory. The new files contain the same data
 # but with extra columns, some rows may be removed, and the genotype call format may be changed.
-tqn.normalize <- function(reps, data.file, call.format="allele1", QN.thresholds=c(1.5,1.5), save=TRUE, output.dir=NULL) {   
+tqn.normalize <- function(reps, data.file, call.format="allele1", QN.thresholds=c(1.5,1.5), save=TRUE, output.dir=NULL) {
     reps <- prepare.reporters(reps)
 
     data <- read.table(data.file, sep="\t", stringsAsFactors=FALSE, header=TRUE, na.strings=c("", "NA"))
     rownames(data) <- data$reporterId
-    
+
     # remove unused genotypes
     data <- data[rownames(reps),]
 
@@ -112,7 +112,7 @@ tqn.normalize <- function(reps, data.file, call.format="allele1", QN.thresholds=
         }
         else {
             nucs <- data[,c("Allele1.Forward","Allele2.Forward")]
-        }           
+        }
     }
 
     if (call.format == "allele1") {
@@ -144,7 +144,7 @@ tqn.normalize <- function(reps, data.file, call.format="allele1", QN.thresholds=
     # quantile normalize intensities
     inorm <- normalizeQuantiles(data[,c("X","Y")])
     colnames(inorm) <- c("X", "Y")
-    
+
     # Normalized X, Y and R (without thresholding)
     data$XCorrected <- inorm$X
     data$YCorrected <- inorm$Y
@@ -177,24 +177,24 @@ tqn.normalize <- function(reps, data.file, call.format="allele1", QN.thresholds=
         }
         write.table(data, outfile, sep="\t", quote=FALSE, append=FALSE, row.names=FALSE, col.names=TRUE)
     }
-    
+
     invisible(data)
 }
 
-# Create a tQN cluster file from a set of reference samples. 
+# Create a tQN cluster file from a set of reference samples.
 #
-# The memory requirement is ~ M*N*6*B, where M is the number of reporters, N is the number of samples and B is 
-# the size of an integer, in bytes (4 for 32-bit R and 8 for 64-bit R). Therefore, if there are a large number 
-# of reporters and/or samples, you will need to first run the normaliztion over all the files, then run this 
+# The memory requirement is ~ M*N*6*B, where M is the number of reporters, N is the number of samples and B is
+# the size of an integer, in bytes (4 for 32-bit R and 8 for 64-bit R). Therefore, if there are a large number
+# of reporters and/or samples, you will need to first run the normaliztion over all the files, then run this
 # function using a chunk size that corresponds to your available memory.
 #
 # The files argument is either a vector of file names, a directory name, or the name of a file that lists all of
-# the data files. This function expects that the last five columns in each data file will be: call, XCorrected, 
-# YCorrected, RCorrected, TCorrected (as this is the output of the tqn.normalize function). If this isn't true, 
+# the data files. This function expects that the last five columns in each data file will be: call, XCorrected,
+# YCorrected, RCorrected, TCorrected (as this is the output of the tqn.normalize function). If this isn't true,
 # you must supply the col.idxs parameter, which is a vector of indexes for the call, RCorrected and TCorrected columns.
 #
 # The extra arguments are passed to tqn.normalize.
-create.cluster.file <- function(reps, ref.files, cluster.file, pre.normalized=FALSE, chunk.size=NULL, col.idxs=NULL, 
+create.cluster.file <- function(reps, ref.files, cluster.file, pre.normalized=FALSE, chunk.size=NULL, col.idxs=NULL,
         min.samples.per.cluster=1, ...) {
     reps <- prepare.reporters(reps)
 
@@ -231,16 +231,16 @@ create.cluster.file <- function(reps, ref.files, cluster.file, pre.normalized=FA
 
         # Aggregate R and T values by allele using a 3D array.
         pop.data <- array(NA, dim=c(nrow(r), nfiles, 6), dimnames=list(rownames(r), 1:nfiles, cols))
-        
+
         for (i in 1:nfiles) {
             if (pre.normalized) {
-                data <- read.table(ref.files[i], sep="\t", stringsAsFactors=FALSE, na.strings=c("", "NA", "NaN"), header=chunk == 0, 
+                data <- read.table(ref.files[i], sep="\t", stringsAsFactors=FALSE, na.strings=c("", "NA", "NaN"), header=chunk == 0,
                     skip=ifelse(split, 0, chunk * chunk.size), nrows=ifelse(split, -1, chunk.size))
             }
             else {
                 data <- tqn.normalize(reps, ref.files[i], ...)
             }
-            
+
             ixs <- col.idxs
             if (is.null(ixs)) {
                 n <- ncol(data)
@@ -249,7 +249,7 @@ create.cluster.file <- function(reps, ref.files, cluster.file, pre.normalized=FA
 
             AA <- data[,ixs[1]] == "AA"
             pop.data[AA, i, c("AA_R", "AA_T")] <- as.matrix(data[AA, ixs[2:3]])
-            
+
             AB <- data[,ixs[1]] == "AB"
             pop.data[AB, i, c("AB_R", "AB_T")] <- as.matrix(data[AB, ixs[2:3]])
 
@@ -264,14 +264,14 @@ create.cluster.file <- function(reps, ref.files, cluster.file, pre.normalized=FA
                 tab <- cbind(means[,x], devs[,x])
                 colnames(tab) <- c(paste(x, "Mean", sep="_"), paste(x, "Dev", sep="_"))
                 tab
-            })), stringsAsFactors=FALSE), 
+            })), stringsAsFactors=FALSE),
             cluster.file, sep="\t", append=split && chunk > 0, quote=FALSE, row.names=FALSE, col.names=TRUE)
 
         chunk <- chunk + 1
     }
 
     nfiles
-}       
+}
 
 prepare.clusters <- function(clusters) {
     if (is.character(clusters)) {
@@ -281,9 +281,9 @@ prepare.clusters <- function(clusters) {
     clusters
 }
 
-# Run tQN normalization for a set of samples. sample.files may be a directory or a vector of files. If 
-# output.dir is defined, updated files will be written there, otherwise the original files will be 
-# overwritten. Output is in native tQN format. A perl script is provided with the tQN package that can 
+# Run tQN normalization for a set of samples. sample.files may be a directory or a vector of files. If
+# output.dir is defined, updated files will be written there, otherwise the original files will be
+# overwritten. Output is in native tQN format. A perl script is provided with the tQN package that can
 # translate this into other formats.
 tQN.files <- function(reps, clusters, sample.files, output.dir=NULL, QN.thresholds=c(1.5,1.5), mc.cores=14) {
     reps <- prepare.reporters(reps)
@@ -299,7 +299,7 @@ tQN.files <- function(reps, clusters, sample.files, output.dir=NULL, QN.threshol
         rownames(data) <- data[,idcol]
 
         norm.data <- tQN(data, reps, clusters, QN.thresholds)
-        
+
         # Write output
         if (is.null(output.dir)) {
             outfile <- f
@@ -319,16 +319,6 @@ tQN.files <- function(reps, clusters, sample.files, output.dir=NULL, QN.threshol
     }, mc.cores=mc.cores)
 }
 
-tQN.database <- function(reps="~/data/arrays/megamuga/tQN/mm_reporters.RData",
-        clusters="~/data/arrays/megamuga/tQN/mm_tQN_clusters.txt", sampleIDs, 
-        database="~/data/arrays/megamuga/megamuga.db", ...) {
-    library(RSQLite)
-    db <- dbConnect(dbDriver("SQLite"), dbname=database)
-    mat <- dbGetPreparedQuery(db, "SELECT sampleID, snpID, X, Y FROM genotypes WHERE sampleID=?", data.frame(sampleID=sampleIDs))
-    dbDisconnect(db)
-    tQN.matrix(reps, clusters, mat, ...)
-}
-
 # Run tQN normalization for a set of samples in a matrix (sampleID, snpID, X, Y). If output.dir is
 # not null, result files will be written there as <sampleID>.norm.txt.
 tQN.matrix <- function(reps, clusters, mat, output.dir=NULL, QN.thresholds=c(1.5,1.5), mc.cores=14) {
@@ -341,7 +331,7 @@ tQN.matrix <- function(reps, clusters, mat, output.dir=NULL, QN.thresholds=c(1.5
         data <- mat[w,2:4]
         rownames(data) <- data[,1]
         colnames(data) <- c("reporterId","X","Y")
-        
+
         norm.data <- tQN(data, reps, clusters, QN.thresholds)
 
         # Write output
@@ -387,7 +377,7 @@ tQN <- function(data, reps, clusters, QN.thresholds=c(1.5,1.5)) {
     T <- theta(inorm)
     T[na] <- NA
     T[!na] <- bound(T[!na], 0 ,1)
-    
+
     # Calculate tQN X and Y to fit theta and R
     Y <- R * tan(T * pi/2) / (1 + tan(T * pi/2))
     X <- R - Y
@@ -402,17 +392,17 @@ tQN <- function(data, reps, clusters, QN.thresholds=c(1.5,1.5)) {
 baf.lrr <- function(R, T, ref) {
     BAF <- T
     LRR <- R
-    
+
     med.tAA <- median(ref$AA_T_Mean, na.rm=TRUE)
     med.tBB <- median(ref$BB_T_Mean, na.rm=TRUE)
-    
+
     for (i in 1:length(T)) {
         if (!is.num(T[i])) {
             BAF[i] <- NaN
             LRR[i] <- NaN
             next
         }
-    
+
         th <- T[i]
         rr <- R[i]
         rAA <- ref$AA_R_Mean[i]
@@ -425,7 +415,7 @@ baf.lrr <- function(R, T, ref) {
         e.tAA <- is.num(tAA)
         e.tAB <- is.num(tAB)
         e.tBB <- is.num(tBB)
-    
+
         # 0: Test for inconsistencies between tAA/tAB/tBB and rAA/rAB/rBB
         if (((e.tAA & e.tAB) && tAA > tAB) ||
                 ((e.tAA & e.tBB) && tAA > tBB) ||
@@ -485,11 +475,11 @@ baf.lrr <- function(R, T, ref) {
                 eR <- rAB + ((th - tAB) * (rBB - rAB) / (tBB - tAB))
                 LRR[i] <- ifelse(eR <= 0, NaN, log2(rr / eR))
             }
-            # 5.2: Heterozygous SNP is subjected to deletion or UPD of allele B making it unexectedly to be 
+            # 5.2: Heterozygous SNP is subjected to deletion or UPD of allele B making it unexectedly to be
             # between ref$AA_T_Mean and ref$AB_T_Mean where it normally should not NOT BE.
             else {
                 BAF[i] <- ifelse(th < med.tAA, 0, 0.5 * (th - med.tAA) / (tAB - med.tAA))
-                LRR[i] <- NaN                   
+                LRR[i] <- NaN
             }
         }
         # 6: Blank for BB while positive for AA & AB
@@ -505,7 +495,7 @@ baf.lrr <- function(R, T, ref) {
                 eR <- rAA + ((th - tAA) * (rAB - rAA) / (tAB - tAA))
                 LRR[i] <- ifelse(eR <= 0, NaN, log2(rr / eR))
             }
-            # 2: Heterozygous SNP is subjected to deletion or UPD of allele A making it unexectedly to be 
+            # 2: Heterozygous SNP is subjected to deletion or UPD of allele A making it unexectedly to be
             # between ref$AB_T_Mean and ref$BB_T_Mean where it normally should not NOT BE.
             else {
                 BAF[i] <- ifelse(th > med.tBB, 1, 0.5 + 0.5 * (th - tAB) / (med.tBB[i] - tAB))
@@ -528,4 +518,3 @@ baf.lrr <- function(R, T, ref) {
 
     cbind(BAF=bound(BAF, 0, 1), LRR=LRR)
 }
-
